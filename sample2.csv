@@ -1,0 +1,11 @@
+Test,Value,Unit,Normal_Min,Normal_Max
+Hemoglobin,15,g/dL,12,16
+Vitamin D,15,ng/mL,20,50
+Cholesterol,250,mg/dL,0,200
+Glucose,180,mg/dL,70,140
+HDL,35,mg/dL,40,60
+LDL,130,mg/dL,0,100
+Triglycerides,180,mg/dL,0,150
+WBC,9.0,x10^3/µL,4.0,11.0
+RBC,5.2,x10^6/µL,4.5,5.9
+Platelets,150,x10^3/µL,150,450
