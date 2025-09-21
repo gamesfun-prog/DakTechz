@@ -1,0 +1,12 @@
+Test,Value,Unit
+Hemoglobin,10.5,g/dL
+Vitamin D,15,ng/mL
+Cholesterol,250,mg/dL
+Glucose,180,mg/dL
+HDL,35,mg/dL
+LDL,130,mg/dL
+Triglycerides,180,mg/dL
+WBC,3.5,x10^3/µL
+RBC,4.2,x10^6/µL
+Platelets,120,x10^3/µL
+Blood Pressure,150/95,mmHg
