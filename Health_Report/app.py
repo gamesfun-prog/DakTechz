@@ -7,7 +7,6 @@ import pandas as pd
 import plotly.express as px
 
 
-
 # ---------- CONFIG ----------
 UPLOAD_FOLDER = 'uploads'
 ALLOWED_EXTENSIONS = {'csv'}
@@ -32,19 +31,56 @@ NORMAL_RANGES = {
     'WBC': (4.0, 11.0, 'x10^3/µL'),
     'RBC': (4.5, 5.9, 'x10^6/µL'),
     'Platelets': (150.0, 450.0, 'x10^3/µL'),
+    'Blood Pressure': (None, None, 'mmHg'),  # Special handling
     # Add more as needed
 }
 
 
 RECOMMENDATIONS = {
     'Hemoglobin_low': 'Consider iron-rich foods (spinach, red meat, lentils). Consult physician for anemia evaluation.',
+    'Hemoglobin_high': "Could indicate dehydration or other issues; consult a doctor.",
     'Vitamin D_low': 'Increase sun exposure and consider Vitamin D supplementation after consulting a physician.',
+    'Vitamin D_high': "Excess supplements; consult doctor.",
     'Cholesterol_high': 'Reduce saturated fats, avoid processed foods, increase fiber and exercise. Consider lipid profile review with a doctor.',
+    'Cholesterol_low': "May indicate malnutrition or other issues.",
     'Glucose_high': 'Reduce sugar and refined carbs, increase physical activity, monitor blood glucose and consult doctor for diabetes evaluation.',
+    'Glucose_low': "Could cause hypoglycemia; eat balanced diet.",
+    'Blood Pressure_high': "Risk of hypertension; reduce salt, exercise.",
+    'Blood Pressure_low': "May cause dizziness; consult doctor.",
     'default_low': 'Value below normal — consider medical follow-up.',
     'default_high': 'Value above normal — consider medical follow-up.'
 }
 
+
+# Disease risk combinations
+
+DISEASE_RULES = [
+    {
+        "conditions": [
+            ("Hemoglobin", "High"),
+            ("Cholesterol", "Low")
+        ],
+        "disease": "Possible Polycythemia or metabolic disorder",
+        "advice": "Consult a hematologist; unusual profile, detailed tests needed."
+    },
+    {
+        "conditions": [
+            ("Cholesterol", "High"),
+            ("Glucose", "High"),
+            ("Blood Pressure", "High")
+        ],
+        "disease": "Metabolic Syndrome",
+        "advice": "Risk of diabetes/heart disease; lifestyle changes strongly advised."
+    },
+    {
+        "conditions": [
+            ("Vitamin D", "Low"),
+            ("Calcium", "Low")
+        ],
+        "disease": "Osteoporosis Risk",
+        "advice": "Bone weakness possible; increase Vitamin D and Calcium intake."
+    }
+]
 
 # ---------- Utilities ----------
 def allowed_file(filename):
@@ -143,28 +179,47 @@ def evaluate_record(rec):
     }
 
 
+def check_disease_combinations(results_df):
+    detected = []
+    for rule in DISEASE_RULES:
+        match = True
+        for (test, status) in rule["conditions"]:
+            found = results_df[(results_df["Test"] == test) & (results_df["Status"] == status)]
+            if found.empty:
+                match = False
+                break
+        if match:
+            detected.append({
+                "Disease": rule["disease"],
+                "Advice": rule["advice"]
+            })
+    return detected
+
+
 # ---------- Routes ----------
 @app.route('/', methods=['GET', 'POST'])
 def index():
     results = None
     chart_html = None
     filename = None
+    disease_risks = []
+    
     if request.method == 'POST':
         # file uploaded
         if 'report' not in request.files:
             flash('No file part')
             return redirect(request.url)
+        
         file = request.files['report']
         if file.filename == '':
             flash('No selected file')
             return redirect(request.url)
+        
         if file and allowed_file(file.filename):
             filename = secure_filename(file.filename)
             saved_path = os.path.join(app.config['UPLOAD_FOLDER'], f"{datetime.now().strftime('%Y%m%d%H%M%S')}_{filename}")
             file.save(saved_path)
 
-
-            # If CSV, parse directly
             try:
                 df = pd.read_csv(saved_path)
                  # Expected columns: Test, Value, Unit, Normal_Min, Normal_Max
@@ -187,7 +242,9 @@ def index():
             evaluated = [evaluate_record(r) for r in records]
             results = pd.DataFrame(evaluated)
 
-
+            # Disease risk check
+            disease_risks = check_disease_combinations(results)
+            
             # small plotting: numeric values only (skip BP non-numeric)
             numeric_df = results[results['Status'] != 'Unknown'].copy()
             # convert Value if numeric
@@ -211,18 +268,16 @@ def index():
                 chart_html = fig.to_html(full_html=False)
 
 
-            # Save results in session-like file for PDF export
+            # Save processed CSV
             out_csv = saved_path + '_results.csv'
             results.to_csv(out_csv, index=False)
             request_results_path = out_csv
-            # store path to allow downloading PDF
-            # we'll pass a query param with saved_path to download
-            return render_template('index.html', results=results.to_dict(orient='records'), chart=chart_html, filename=os.path.basename(saved_path))
 
+            return render_template('index.html', results=results.to_dict(orient='records'), chart=chart_html, filename=os.path.basename(saved_path), disease_risks=disease_risks)
+        
 
-    return render_template('index.html', results=None, chart=None, filename=None)
+    return render_template('index.html', results=None, chart=None, filename=None, disease_risks=[])
 
 
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=5000, debug=True)
-
