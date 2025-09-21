@@ -86,6 +86,21 @@
 
     </div>
 
+    {% if disease_risks %}
+    <div class="card mt-4">
+      <div class="card-body">
+        <h4 class="card-title">Potential Disease Risks</h4>
+        <ul class="list-group">
+          {% for risk in disease_risks %}
+          <li class="list-group-item">
+            <strong>{{ risk.Disease }}</strong><br>
+            <small>{{ risk.Advice }}</small>
+          </li>
+          {% endfor %}
+        </ul>
+      </div>
+    </div>
+    {% endif %}
 
     {% if chart %}
       <div class="card p-3 mt-3">
